@@ -17,6 +17,3 @@ Data Template Library
 * map：单重有序映射 -> avl_tree
 * multimap：多重有序映射 -> avl_tree
 
-## 迭代器
-* iterator
-
