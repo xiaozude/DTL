@@ -4,8 +4,8 @@
  *
  *  Filename: heap.h
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 堆（容器适配器）
  *
  *****************************************************************/
@@ -18,22 +18,22 @@
 #include "vector.h"
 
 typedef struct heap {
-	vector_t vector;
+	vector_t *vector;
 	int (*compar)(const void *, const void *);
 } heap_t;
 
-extern void heap_init(heap_t *phead, size_t size,
-		int (*compar)(const void *, const void *));
-extern void heap_free(heap_t *pheap);
+extern heap_t *heap_init(size_t size,
+	int (*compar)(const void *, const void *));
+extern void heap_free(heap_t *this);
 
-extern void *heap_top(heap_t heap);
+extern void *heap_top(heap_t *this);
 
-extern bool heap_empty(heap_t heap);
-extern size_t heap_size(heap_t heap);
+extern bool heap_empty(heap_t *this);
+extern size_t heap_size(heap_t *this);
 
-extern void heap_clear(heap_t *pheap);
-extern void heap_push(heap_t *pheap, const void *data);
-extern void heap_pop(heap_t *pheap);
+extern void heap_clear(heap_t *this);
+extern void heap_push(heap_t *this, const void *data);
+extern void heap_pop(heap_t *this);
 
 #endif // DTL_HEAP_H
 

@@ -4,8 +4,8 @@
  *
  *  Filename: vector.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 动态数组（容器）
  *
  *****************************************************************/
@@ -16,171 +16,236 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void vector_expand(vector_t *pvector, size_t times)
+vector_t *vector_init(size_t size)
 {
-	assert(pvector != NULL);
-
-	if (times == 0) {
-		return;
-	}
-	
-	size_t length_size = (pvector->cliff - pvector->elems) << times;
-	size_t count_size = pvector->finish - pvector->start;
-
-	void *elems = realloc(pvector->elems, length_size);
-	if (elems == NULL) {
-		perror("realloc");
-		exit(EXIT_FAILURE);
-	}
-
-	pvector->elems = elems;
-	pvector->cliff = pvector->elems + length_size;
-	pvector->start = pvector->elems;
-	pvector->finish = pvector->start + count_size;
-}
-
-void vector_init(vector_t *pvector, size_t size)
-{
-	assert(pvector != NULL);
 	assert(size > 0);
 
-	void *elems = calloc(1, size);
-	if (elems == NULL) {
+	vector_t *this = NULL;
+	if ((this = (vector_t *) malloc(sizeof(*this))) == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 
-	pvector->size = size;
-	pvector->elems = elems;
-	pvector->cliff = pvector->elems + size;
-	pvector->start = pvector->elems;
-	pvector->finish = pvector->start;
-}
-
-void vector_free(vector_t *pvector)
-{
-	assert(pvector != NULL);
-
-	free(pvector->elems);
-	
-	pvector->elems = NULL;
-	pvector->cliff = NULL;
-	pvector->start = NULL;
-	pvector->finish = NULL;
-}
-
-void *vector_front(vector_t vector)
-{
-	return vector.start;
-}
-
-void *vector_back(vector_t vector)
-{
-	return vector.finish - vector.size;
-}
-
-void *vector_index(vector_t vector, size_t index)
-{
-	return vector.start + index * vector.size;
-}
-
-bool vector_empty(vector_t vector)
-{
-	return vector.start == vector.finish;
-}
-
-size_t vector_size(vector_t vector)
-{
-	return (vector.finish - vector.start) / vector.size;
-}
-
-void vector_clear(vector_t *pvector)
-{
-	assert(pvector != NULL);
-
-	pvector->finish = pvector->start;
-}
-
-void vector_insert(vector_t *pvector, size_t index, const void *data)
-{
-	assert(pvector != NULL);
-	assert(data != NULL);
-
-	if (pvector->finish == pvector->cliff) {	
-		vector_expand(pvector, 1);
+	void *elems = NULL;
+	if ((elems = malloc(size)) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
 	}
 
-	void *cursor = pvector->start + index * pvector->size;
-	memmove(cursor + pvector->size, cursor, pvector->finish - cursor);
-	memcpy(cursor, data, pvector->size);
-	pvector->finish += pvector->size;
+	this->size = size;
+	this->start = elems;
+	this->finish = this->start;
+	this->cliff = this->start + size;
+
+	return this;
 }
 
-void vector_erase(vector_t *pvector, size_t index)
+void vector_free(vector_t *this)
 {
-	assert(pvector != NULL);
-	
-	void *cursor = pvector->start + index * pvector->size;
-	size_t move_size = pvector->finish - cursor - pvector->size;
-	memmove(cursor, cursor + pvector->size, move_size);
-	pvector->finish -= pvector->size;
-}
-
-void vector_push_back(vector_t *pvector, const void *data)
-{
-	assert(pvector != NULL);
-	assert(data != NULL);
-
-	if (pvector->finish == pvector->cliff) {
-		vector_expand(pvector, 1);
+	if (this == NULL) {
+		return;
 	}
 
-	memcpy(pvector->finish, data, pvector->size);	
-	pvector->finish += pvector->size;
+	free(this->start);
+	free(this);
 }
 
-void vector_pop_back(vector_t *pvector)
+void *vector_front(vector_t *this)
 {
-	assert(pvector != NULL);
+	assert(this != NULL);
+	assert(!vector_empty(this));
 
-	pvector->finish -= pvector->size;
+	return this->start;
 }
 
-static void *vector_iterator_data(iterator_t it)
+void *vector_back(vector_t *this)
 {
-	return !it.reverse ? it.current : it.current - it.size;
+	assert(this != NULL);
+	assert(!vector_empty(this));
+
+	return this->finish - this->size;
 }
 
-static iterator_t vector_iterator(vector_t vector, bool reverse, void *current)
+void *vector_index(vector_t *this, size_t index)
 {
-	iterator_t it;
-	it.size = vector.size;
-	it.current = current;
-	it.reverse = reverse;
-	it.category = random_access_iterator_tag;
-	it.data = vector_iterator_data;
-	it.prev = NULL;
-	it.next = NULL;
-	return it;
+	assert(this != NULL);
+	assert(index < vector_size(this));
+
+	return this->start + index * this->size;
 }
 
-iterator_t vector_begin(vector_t vector)
+bool vector_empty(vector_t *this)
 {
-	return vector_iterator(vector, false, vector.start);
+	assert(this != NULL);
+
+	return this->finish == this->start;
 }
 
-iterator_t vector_end(vector_t vector)
+size_t vector_size(vector_t *this)
 {
-	return vector_iterator(vector, false, vector.finish);
+	assert(this != NULL);
+
+	return (this->finish - this->start) / this->size;
 }
 
-iterator_t vector_rbegin(vector_t vector)
+size_t vector_capacity(vector_t *this)
 {
-	return vector_iterator(vector, true, vector.finish);
+	assert(this != NULL);
+
+	return (this->cliff - this->start) / this->size;
 }
 
-iterator_t vector_rend(vector_t vector)
+void vector_clear(vector_t *this)
 {
-	return vector_iterator(vector, true, vector.start);
+	assert(this != NULL);
+
+	this->finish = this->start;
+}
+
+void vector_insert(vector_t *this, size_t index, const void *data)
+{
+	assert(this != NULL);
+	assert(index <= vector_size(this));
+	assert(data != NULL);
+
+	size_t size = this->finish - this->start;
+	size_t left_size = index * this->size;
+	size_t right_size = size - left_size;
+	
+	if (this->finish == this->cliff) {	
+		void *elems = NULL;
+		if ((elems = malloc(size << 1)) == NULL) {
+			perror("malloc");
+			exit(EXIT_FAILURE);
+		}
+
+		memcpy(elems, this->start, left_size);
+		memcpy(elems + left_size, data, this->size);
+		memcpy(elems + left_size + this->size, this->start + left_size, right_size);
+
+		free(this->start);
+		
+		this->start = elems;
+		this->finish = this->start + size + this->size;
+		this->cliff = this->start + (size << 1);
+		
+		return;
+	}
+	
+	memmove(this->start + left_size + this->size, this->start + left_size, right_size);
+	memcpy(this->start + left_size, data, this->size);
+	this->finish += this->size;
+}
+
+void vector_erase(vector_t *this, size_t index)
+{
+	assert(this != NULL);
+	assert(index < vector_size(this));
+	
+	size_t size = this->finish - this->start;
+	size_t left_size = index * this->size;
+	size_t right_size = size - left_size - this->size;
+
+	memmove(this->start + left_size, this->finish - right_size, right_size);
+	this->finish -= this->size;
+}
+
+void vector_push_back(vector_t *this, const void *data)
+{
+	assert(this != NULL);
+	assert(data != NULL);
+
+	if (this->finish == this->cliff) {
+		vector_insert(this, vector_size(this), data);
+		return;
+	}
+	
+	memcpy(this->finish, data, this->size);	
+	this->finish += this->size;
+}
+
+void vector_pop_back(vector_t *this)
+{
+	assert(this != NULL);
+	assert(!vector_empty(this));
+
+	this->finish -= this->size;
+}
+
+vector_iter_t vector_begin(vector_t *this)
+{
+	assert(this != NULL);
+
+	return (vector_iter_t) { this->size, this->start, false };
+}
+
+vector_iter_t vector_end(vector_t *this)
+{
+	assert(this != NULL);
+
+	return (vector_iter_t) { this->size, this->finish, false };
+}
+
+vector_iter_t vector_rbegin(vector_t *this)
+{
+	assert(this != NULL);
+
+	return (vector_iter_t) { this->size, this->finish, true };
+}
+
+vector_iter_t vector_rend(vector_t *this)
+{
+	assert(this != NULL);
+
+	return (vector_iter_t) { this->size, this->start, true };
+}
+
+void *vector_data(vector_iter_t iter)
+{
+	if (!iter.reverse) {
+		return iter.cursor;
+	} else {
+		return iter.cursor - iter.size;
+	}
+}
+
+bool vector_equal(vector_iter_t iter1, vector_iter_t iter2)
+{
+	assert(iter1.size == iter2.size);
+	assert(iter1.reverse == iter2.reverse);
+
+	return vector_distance(iter1, iter2) == 0;
+}
+
+ptrdiff_t vector_distance(vector_iter_t first, vector_iter_t last)
+{
+	assert(first.size == last.size);
+	assert(first.reverse == last.reverse);
+
+	if (!first.reverse) {
+		return (last.cursor - first.cursor) / first.size;
+	} else {
+		return (first.cursor - last.cursor) / first.size;
+	}
+}
+
+vector_iter_t vector_prev(vector_iter_t iter)
+{
+	return vector_advance(iter, -1);
+}
+
+vector_iter_t vector_next(vector_iter_t iter)
+{
+	return vector_advance(iter, 1);
+}
+
+vector_iter_t vector_advance(vector_iter_t iter, ptrdiff_t distance)
+{
+	if (!iter.reverse) {
+		iter.cursor += distance * iter.size;
+	} else {
+		iter.cursor -= distance * iter.size;
+	}
+	return iter;
 }
 

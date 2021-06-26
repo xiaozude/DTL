@@ -4,87 +4,132 @@
  *
  *  Filename: set.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-14
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 单重有序集合（容器适配器）
  *
  *****************************************************************/
 
 #include "set.h"
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void set_init(set_t *pset, size_t size, int (*compar)(const void *, const void *))
+set_t *set_init(size_t size, int (*compar)(const void *, const void *))
 {
-	assert(pset != NULL);
 	assert(size > 0);
 
-	avl_tree_init(&pset->tree, size, compar);
+	set_t *this = NULL;
+	if ((this = (set_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->tree = avl_tree_init(size, compar);
+	return this;
 }
 
-void set_free(set_t *pset)
+void set_free(set_t *this)
 {
-	assert(pset != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	avl_tree_free(&pset->tree);
+	avl_tree_free(this->tree);
+	free(this);
 }
 
-size_t set_count(set_t set, const void *data)
+size_t set_count(set_t *this, const void *data)
 {
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_count(set.tree, data);
+	return avl_tree_count(this->tree, data);
 }
 
-bool set_empty(set_t set)
+bool set_empty(set_t *this)
 {
-	return avl_tree_empty(set.tree);
+	assert(this != NULL);
+	
+	return avl_tree_empty(this->tree);
 }
 
-size_t set_size(set_t set)
+size_t set_size(set_t *this)
 {
-	return avl_tree_size(set.tree);
+	assert(this != NULL);
+	
+	return avl_tree_size(this->tree);
 }
 
-void set_clear(set_t *pset)
+void set_clear(set_t *this)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 
-	avl_tree_clear(&pset->tree);
+	avl_tree_clear(this->tree);
 }
 
-bool set_insert(set_t *pset, const void *data)
+bool set_insert(set_t *this, const void *data)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_insert(&pset->tree, true, data);
+	return avl_tree_insert(this->tree, data, true);
 }
 
-bool set_erase(set_t *pset, const void *data)
+bool set_erase(set_t *this, const void *data)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_erase(&pset->tree, data);
+	return avl_tree_erase(this->tree, data);
 }
 
-iterator_t set_begin(set_t set)
+set_iter_t set_begin(set_t *this)
 {
-	return avl_tree_begin(set.tree);
+	return avl_tree_begin(this->tree);
 }
 
-iterator_t set_end(set_t set)
+set_iter_t set_end(set_t *this)
 {
-	return avl_tree_end(set.tree);
+	return avl_tree_end(this->tree);
 }
 
-iterator_t set_rbegin(set_t set)
+set_iter_t set_rbegin(set_t *this)
 {
-	return avl_tree_rbegin(set.tree);
+	return avl_tree_rbegin(this->tree);
 }
 
-iterator_t set_rend(set_t set)
+set_iter_t set_rend(set_t *this)
 {
-	return avl_tree_rend(set.tree);
+	return avl_tree_rend(this->tree);
+}
+
+void *set_data(set_iter_t iter)
+{
+	return avl_tree_data(iter);
+}
+
+bool set_equal(set_iter_t iter1, set_iter_t iter2)
+{
+	return avl_tree_equal(iter1, iter2);
+}
+
+ptrdiff_t set_distance(set_iter_t first, set_iter_t last)
+{
+	return avl_tree_distance(first, last);
+}
+
+set_iter_t set_prev(set_iter_t iter)
+{
+	return avl_tree_prev(iter);
+}
+
+set_iter_t set_next(set_iter_t iter)
+{
+	return avl_tree_next(iter);
+}
+
+set_iter_t set_advance(set_iter_t iter, ptrdiff_t distance)
+{
+	return avl_tree_advance(iter, distance);
 }
 

@@ -4,8 +4,8 @@
  *
  *  Filename: list.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 双向环状链表（容器）
  *
  *****************************************************************/
@@ -16,29 +16,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct list_node *list_node_init(const void *data, size_t size)
+static list_node_t *list_node_init(const void *data, size_t size)
 {
 	assert(size > 0);
 
-	struct list_node *p = NULL;
-	if ((p = (struct list_node *) calloc(1, sizeof(*p))) == NULL) {
-		perror("calloc");
+	list_node_t *p = NULL;
+	if ((p = (list_node_t *) malloc(sizeof(*p))) == NULL) {
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
+	memset(p, 0, sizeof(*p));
 
-	if ((p->data = calloc(1, size)) == NULL) {
-		perror("calloc");
+	if ((p->data = malloc(size)) == NULL) {
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 	
-	if (data != NULL) {
+	if (data == NULL) {
+		memset(p->data, 0, size);
+	} else {
 		memcpy(p->data, data, size);
 	}
 	
 	return p;
 }
 
-static void list_node_free(struct list_node *p)
+static void list_node_free(list_node_t *p)
 {
 	if (p == NULL) {
 		return;
@@ -48,184 +51,244 @@ static void list_node_free(struct list_node *p)
 	free(p);
 }
 
-void list_init(list_t *plist, size_t size)
+list_t *list_init(size_t size)
 {
-	assert(plist != NULL);
 	assert(size > 0);
 
-	plist->size = size;
-	plist->count = 0;
-	plist->root = list_node_init(NULL, plist->size);
-	plist->root->prev = plist->root;
-	plist->root->next = plist->root;
+	list_t *this = NULL;
+	if ((this = (list_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+
+	this->size = size;
+	this->count = 0;
+	this->root = list_node_init(NULL, this->size);
+	this->root->prev = this->root;
+	this->root->next = this->root;
+
+	return this;
 }
 
-void list_free(list_t *plist)
+void list_free(list_t *this)
 {
-	assert(plist != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	list_clear(plist);
-	list_node_free(plist->root);
-
-	plist->count = 0;
-	plist->root = NULL;
+	list_clear(this);
+	list_node_free(this->root);
+	free(this);
 }
 
-void *list_front(list_t list)
+void *list_front(list_t *this)
 {
-	return list.root->next->data;
+	assert(this != NULL);
+
+	return this->root->next->data;
 }
 
-void *list_back(list_t list)
+void *list_back(list_t *this)
 {
-	return list.root->prev->data;
+	assert(this != NULL);
+
+	return this->root->prev->data;
 }
 
-bool list_empty(list_t list)
+bool list_empty(list_t *this)
 {
-	return list.count <= 0;
+	assert(this != NULL);
+
+	return this->count == 0;
 }
 
-size_t list_size(list_t list)
+size_t list_size(list_t *this)
 {
-	return list.count;
+	assert(this != NULL);
+
+	return this->count;
 }
 
-void list_clear(list_t *plist)
+void list_clear(list_t *this)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
 
 	struct list_node *p = NULL;
-	while ((p = plist->root->next) != plist->root) {
-		plist->root->next = p->next;
+	while ((p = this->root->next) != this->root) {
+		this->root->next = p->next;
 		list_node_free(p);
 	}
 
-	plist->count = 0;
-	plist->root->prev = plist->root;
-	plist->root->next = plist->root;
+	this->count = 0;
+	this->root->prev = this->root;
+	this->root->next = this->root;
 }
 
-void list_insert(list_t *plist, iterator_t iterator, const void *data)
+void list_insert(list_t *this, list_iter_t iter, const void *data)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
+	assert(this->size == iter.size);
 	
-	struct list_node *p = (struct list_node *) iterator.current;
-	struct list_node *q = list_node_init(data, plist->size);
+	list_node_t *p = iter.cursor;
+	list_node_t *q = list_node_init(data, this->size);
 	q->prev = p->prev;
 	q->next = p;
 	p->prev->next = q;
 	p->prev = q;
-	plist->count++;
+	this->count++;
 }
 
-void list_erase(list_t *plist, iterator_t iterator)
+void list_erase(list_t *this, list_iter_t iter)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
+	assert(this->size == iter.size);
+	assert(!list_empty(this));
 	
-	struct list_node *p = (struct list_node *) iterator.current;
+	list_node_t *p = iter.cursor;
 	p->prev->next = p->next;
 	p->next->prev = p->prev;
 	list_node_free(p);
-	plist->count--;
+	this->count--;
 }
 
-void list_push_front(list_t *plist, const void *data)
+void list_push_front(list_t *this, const void *data)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	struct list_node *p = list_node_init(data, plist->size);
-	p->prev = plist->root;
-	p->next = plist->root->next;
-	plist->root->next->prev = p;
-	plist->root->next = p;
-	plist->count++;
+	list_node_t *p = list_node_init(data, this->size);
+	p->prev = this->root;
+	p->next = this->root->next;
+	this->root->next->prev = p;
+	this->root->next = p;
+	this->count++;
 }
 
-void list_pop_front(list_t *plist)
+void list_pop_front(list_t *this)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
+	assert(!list_empty(this));
 
-	struct list_node *p = plist->root->next;
-	p->next->prev = plist->root;
-	plist->root->next = p->next;
+	list_node_t *p = this->root->next;
+	p->next->prev = this->root;
+	this->root->next = p->next;
 	list_node_free(p);
-	plist->count--;
+	this->count--;
 }
 
-void list_push_back(list_t *plist, const void *data)
+void list_push_back(list_t *this, const void *data)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	struct list_node *p = list_node_init(data, plist->size);
-	p->prev = plist->root->prev;
-	p->next = plist->root;
-	plist->root->prev->next = p;
-	plist->root->prev = p;
-	plist->count++;
+	list_node_t *p = list_node_init(data, this->size);
+	p->prev = this->root->prev;
+	p->next = this->root;
+	this->root->prev->next = p;
+	this->root->prev = p;
+	this->count++;
 }
 
-void list_pop_back(list_t *plist)
+void list_pop_back(list_t *this)
 {
-	assert(plist != NULL);
+	assert(this != NULL);
+	assert(!list_empty(this));
 
-	struct list_node *p = plist->root->prev;
-	p->prev->next = plist->root;
-	plist->root->prev = p->prev;
+	list_node_t *p = this->root->prev;
+	p->prev->next = this->root;
+	this->root->prev = p->prev;
 	list_node_free(p);
-	plist->count--;
+	this->count--;
 }
 
-static void *list_iterator_data(iterator_t it)
+list_iter_t list_begin(list_t *this)
 {
-	return ((struct list_node *) it.current)->data;
+	assert(this != NULL);
+
+	return (list_iter_t) { this->size, this->root->next, false };
 }
 
-static iterator_t list_iterator_prev(iterator_t it)
+list_iter_t list_end(list_t *this)
 {
-	it.current = ((struct list_node *) it.current)->prev;
-	return it;
+	assert(this != NULL);
+
+	return (list_iter_t) { this->size, this->root, false };
 }
 
-static iterator_t list_iterator_next(iterator_t it)
+list_iter_t list_rbegin(list_t *this)
 {
-	it.current = ((struct list_node *) it.current)->next;
-	return it;
+	assert(this != NULL);
+
+	return (list_iter_t) { this->size, this->root->prev, true };
 }
 
-static iterator_t list_iterator(list_t list, bool reverse, void *current)
+list_iter_t list_rend(list_t *this)
 {
-	iterator_t it;
-	it.size = list.size;
-	it.current = current;
-	it.reverse = reverse;
-	it.category = bidirectional_iterator_tag;
-	it.data = list_iterator_data;
-	it.prev = list_iterator_prev;
-	it.next = list_iterator_next;
-	return it;
+	assert(this != NULL);
+
+	return (list_iter_t) { this->size, this->root, true };
 }
 
-iterator_t list_begin(list_t list)
+void *list_data(list_iter_t iter)
 {
-	return list_iterator(list, false, list.root->next);
+	return iter.cursor->data;
 }
 
-iterator_t list_end(list_t list)
+bool list_equal(list_iter_t iter1, list_iter_t iter2)
 {
-	return list_iterator(list, false, list.root);
+	assert(iter1.size == iter2.size);
+	assert(iter1.reverse == iter2.reverse);
+
+	return list_distance(iter1, iter2) == 0;
 }
 
-iterator_t list_rbegin(list_t list)
+ptrdiff_t list_distance(list_iter_t first, list_iter_t last)
 {
-	return list_iterator(list, true, list.root->prev);
+	assert(first.size == last.size);
+	assert(first.reverse == last.reverse);
+
+	ptrdiff_t distance = 0;
+	if (!first.reverse) {
+		while (first.cursor != last.cursor) {
+			first.cursor = first.cursor->next;
+			distance++;
+		}
+	} else {
+		while (first.cursor != last.cursor) {
+			first.cursor = first.cursor->prev;
+			distance++;
+		}
+	}
+	return distance;
 }
 
-iterator_t list_rend(list_t list)
+list_iter_t list_prev(list_iter_t iter)
 {
-	return list_iterator(list, true, list.root);
+	return list_advance(iter, -1);
+}
+
+list_iter_t list_next(list_iter_t iter)
+{
+	return list_advance(iter, 1);
+}
+
+list_iter_t list_advance(list_iter_t iter, ptrdiff_t distance)
+{
+	if (iter.reverse) {
+		distance = -distance;
+	}
+
+	while (distance < 0) {
+		iter.cursor = iter.cursor->prev;
+		distance++;
+	}
+
+	while (distance > 0) {
+		iter.cursor = iter.cursor->next;
+		distance--;
+	}
+
+	return iter;
 }
 

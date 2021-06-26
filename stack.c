@@ -4,64 +4,81 @@
  *
  *  Filename: stack.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 栈（容器适配器）
  *
  *****************************************************************/
 
 #include "stack.h"
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void stack_init(stack_t *pstack, size_t size)
+stack_t *stack_init(size_t size)
 {
-	assert(pstack != NULL);
 	assert(size > 0);
 
-	vector_init(&pstack->vector, size);
+	stack_t *this = NULL;
+	if ((this = (stack_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->deque = deque_init(size);
+	return this;
 }
 
-void stack_free(stack_t *pstack)
+void stack_free(stack_t *this)
 {
-	assert(pstack != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	vector_free(&pstack->vector);
+	deque_free(this->deque);
+	free(this);
 }
 
-void *stack_top(stack_t stack)
+void *stack_top(stack_t *this)
 {
-	return vector_back(stack.vector);
+	assert(this != NULL);
+
+	return deque_back(this->deque);
 }
 
-bool stack_empty(stack_t stack)
+bool stack_empty(stack_t *this)
 {
-	return vector_empty(stack.vector);
+	assert(this != NULL);
+
+	return deque_empty(this->deque);
 }
 
-size_t stack_size(stack_t stack)
+size_t stack_size(stack_t *this)
 {
-	return vector_size(stack.vector);
+	assert(this != NULL);
+
+	return deque_size(this->deque);
 }
 
-void stack_clear(stack_t *pstack)
+void stack_clear(stack_t *this)
 {
-	assert(pstack != NULL);
+	assert(this != NULL);
 
-	vector_clear(&pstack->vector);
+	deque_clear(this->deque);
 }
 
-void stack_push(stack_t *pstack, const void *data)
+void stack_push(stack_t *this, const void *data)
 {
-	assert(pstack != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	vector_push_back(&pstack->vector, data);
+	deque_push_back(this->deque, data);
 }
 
-void stack_pop(stack_t *pstack)
+void stack_pop(stack_t *this)
 {
-	assert(pstack != NULL);
+	assert(this != NULL);
+	assert(!stack_empty(this));
 
-	vector_pop_back(&pstack->vector);
+	deque_pop_back(this->deque);
 }
 

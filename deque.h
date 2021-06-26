@@ -4,9 +4,9 @@
  *
  *  Filename: deque.h
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
- *  Description: 双端队列（容器）
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
+ *  Description: 双端队列（容器适配器）
  *
  *****************************************************************/
 
@@ -15,38 +15,26 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "iterator.h"
+#include "list.h"
 
 typedef struct deque {
-	size_t size;
-	void *elems;
-	void *cliff;
-	void *start;
-	void *finish;
+	list_t *list;
 } deque_t;
 
-extern void deque_init(deque_t *pdeque, size_t size);
-extern void deque_free(deque_t *pdeque);
+extern deque_t *deque_init(size_t size);
+extern void deque_free(deque_t *this);
 
-extern void *deque_front(deque_t deque);
-extern void *deque_back(deque_t deque);
-extern void *deque_index(deque_t deque, size_t index);
+extern void *deque_front(deque_t *this);
+extern void *deque_back(deque_t *this);
 
-extern bool deque_empty(deque_t deque);
-extern size_t deque_size(deque_t deque);
+extern bool deque_empty(deque_t *this);
+extern size_t deque_size(deque_t *this);
 
-extern void deque_clear(deque_t *pdeque);
-extern void deque_insert(deque_t *pdeque, size_t index, const void *data);
-extern void deque_erase(deque_t *pdeque, size_t index);
-extern void deque_push_front(deque_t *pdeque, const void *data);
-extern void deque_pop_front(deque_t *pdeque);
-extern void deque_push_back(deque_t *pdeque, const void *data);
-extern void deque_pop_back(deque_t *pdeque);
-
-extern iterator_t deque_begin(deque_t deque);
-extern iterator_t deque_end(deque_t deque);
-extern iterator_t deque_rbegin(deque_t deque);
-extern iterator_t deque_rend(deque_t deque);
+extern void deque_clear(deque_t *this);
+extern void deque_push_front(deque_t *this, const void *data);
+extern void deque_pop_front(deque_t *this);
+extern void deque_push_back(deque_t *this, const void *data);
+extern void deque_pop_back(deque_t *this);
 
 #endif // DTL_DEQUE_H
 

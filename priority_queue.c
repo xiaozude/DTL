@@ -4,64 +4,82 @@
  *
  *  Filename: priority_queue.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 优先队列（容器适配器）
  *
  *****************************************************************/
 
 #include "priority_queue.h"
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void priority_queue_init(priority_queue_t *pqueue, size_t size, int (*compar)(const void *, const void *))
+priority_queue_t *priority_queue_init(size_t size, int (*compar)(const void *, const void *))
 {
-	assert(pqueue != NULL);
 	assert(size > 0);
+	assert(compar != NULL);
 	
-	heap_init(&pqueue->heap, size, compar);
+	priority_queue_t *this = NULL;
+	if ((this = (priority_queue_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->heap = heap_init(size, compar);
+	return this;
 }
 
-void priority_queue_free(priority_queue_t *pqueue)
+void priority_queue_free(priority_queue_t *this)
 {
-	assert(pqueue != NULL);
+	if (this == NULL) {
+		return;
+	}
 	
-	heap_free(&pqueue->heap);
+	heap_free(this->heap);
+	free(this);
 }
 
-void *priority_queue_top(priority_queue_t queue)
+void *priority_queue_top(priority_queue_t *this)
 {
-	return heap_top(queue.heap);
+	assert(this != NULL);
+
+	return heap_top(this->heap);
 }
 
-bool priority_queue_empty(priority_queue_t queue)
+bool priority_queue_empty(priority_queue_t *this)
 {
-	return heap_empty(queue.heap);
+	assert(this != NULL);
+
+	return heap_empty(this->heap);
 }
 
-size_t priority_queue_size(priority_queue_t queue)
+size_t priority_queue_size(priority_queue_t *this)
 {
-	return heap_size(queue.heap);
+	assert(this != NULL);
+
+	return heap_size(this->heap);
 }
 
-void priority_queue_clear(priority_queue_t *pqueue)
+void priority_queue_clear(priority_queue_t *this)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
 	
-	return heap_clear(&pqueue->heap);
+	heap_clear(this->heap);
 }
 
-void priority_queue_push(priority_queue_t *pqueue, const void *data)
+void priority_queue_push(priority_queue_t *this, const void *data)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 	
-	heap_push(&pqueue->heap, data);
+	heap_push(this->heap, data);
 }
 
-void priority_queue_pop(priority_queue_t *pqueue)
+void priority_queue_pop(priority_queue_t *this)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
+	assert(!priority_queue_empty(this));
 	
-	heap_pop(&pqueue->heap);
+	heap_pop(this->heap);
 }
 

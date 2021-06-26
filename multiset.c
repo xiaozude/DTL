@@ -4,87 +4,132 @@
  *
  *  Filename: multiset.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-14
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 多重有序集合（容器适配器）
  *
  *****************************************************************/
 
 #include "multiset.h"
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void multiset_init(multiset_t *pset, size_t size, int (*compar)(const void *, const void *))
+multiset_t *multiset_init(size_t size, int (*compar)(const void *, const void *))
 {
-	assert(pset != NULL);
 	assert(size > 0);
 
-	avl_tree_init(&pset->tree, size, compar);
+	multiset_t *this = NULL;
+	if ((this = (multiset_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->tree = avl_tree_init(size, compar);
+	return this;
 }
 
-void multiset_free(multiset_t *pset)
+void multiset_free(multiset_t *this)
 {
-	assert(pset != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	avl_tree_free(&pset->tree);
+	avl_tree_free(this->tree);
+	free(this);
 }
 
-size_t multiset_count(multiset_t set, const void *data)
+size_t multiset_count(multiset_t *this, const void *data)
 {
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_count(set.tree, data);
+	return avl_tree_count(this->tree, data);
 }
 
-bool multiset_empty(multiset_t set)
+bool multiset_empty(multiset_t *this)
 {
-	return avl_tree_empty(set.tree);
+	assert(this != NULL);
+
+	return avl_tree_empty(this->tree);
 }
 
-size_t multiset_size(multiset_t set)
+size_t multiset_size(multiset_t *this)
 {
-	return avl_tree_size(set.tree);
+	assert(this != NULL);
+
+	return avl_tree_size(this->tree);
 }
 
-void multiset_clear(multiset_t *pset)
+void multiset_clear(multiset_t *this)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 
-	avl_tree_clear(&pset->tree);
+	avl_tree_clear(this->tree);
 }
 
-bool multiset_insert(multiset_t *pset, const void *data)
+bool multiset_insert(multiset_t *this, const void *data)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_insert(&pset->tree, false, data);
+	return avl_tree_insert(this->tree, false, data);
 }
 
-bool multiset_erase(multiset_t *pset, const void *data)
+bool multiset_erase(multiset_t *this, const void *data)
 {
-	assert(pset != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	return avl_tree_erase(&pset->tree, data);
+	return avl_tree_erase(this->tree, data);
 }
 
-iterator_t multiset_begin(multiset_t set)
+multiset_iter_t multiset_begin(multiset_t *this)
 {
-	return avl_tree_begin(set.tree);
+	return avl_tree_begin(this->tree);
 }
 
-iterator_t multiset_end(multiset_t set)
+multiset_iter_t multiset_end(multiset_t *this)
 {
-	return avl_tree_end(set.tree);
+	return avl_tree_end(this->tree);
 }
 
-iterator_t multiset_rbegin(multiset_t set)
+multiset_iter_t multiset_rbegin(multiset_t *this)
 {
-	return avl_tree_rbegin(set.tree);
+	return avl_tree_rbegin(this->tree);
 }
 
-iterator_t multiset_rend(multiset_t set)
+multiset_iter_t multiset_rend(multiset_t *this)
 {
-	return avl_tree_rend(set.tree);
+	return avl_tree_rend(this->tree);
+}
+
+void *multiset_data(multiset_iter_t iter)
+{
+	return avl_tree_data(iter);
+}
+
+bool multiset_equal(multiset_iter_t iter1, multiset_iter_t iter2)
+{
+	return avl_tree_equal(iter1, iter2);
+}
+
+ptrdiff_t multiset_distance(multiset_iter_t first, multiset_iter_t last)
+{
+	return avl_tree_distance(first, last);
+}
+
+multiset_iter_t multiset_prev(multiset_iter_t iter)
+{
+	return avl_tree_prev(iter);
+}
+
+multiset_iter_t multiset_next(multiset_iter_t iter)
+{
+	return avl_tree_next(iter);
+}
+
+multiset_iter_t multiset_advance(multiset_iter_t iter, ptrdiff_t distance)
+{
+	return avl_tree_advance(iter, distance);
 }
 

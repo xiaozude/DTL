@@ -4,69 +4,90 @@
  *
  *  Filename: queue.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 队列（容器适配器）
  *
  *****************************************************************/
 
 #include "queue.h"
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void queue_init(queue_t *pqueue, size_t size)
+queue_t *queue_init(size_t size)
 {
-	assert(pqueue != NULL);
 	assert(size > 0);
 
-	deque_init(&pqueue->deque, size);
+	queue_t *this = NULL;
+	if ((this = (queue_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->deque = deque_init(size);
+	return this;
 }
 
-void queue_free(queue_t *pqueue)
+void queue_free(queue_t *this)
 {
-	assert(pqueue != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	deque_free(&pqueue->deque);
+	deque_free(this->deque);
+	free(this);
 }
 
-void *queue_front(queue_t queue)
+void *queue_front(queue_t *this)
 {
-	return deque_front(queue.deque);
+	assert(this != NULL);
+	assert(!queue_empty(this));
+
+	return deque_front(this->deque);
 }
 
-void *queue_back(queue_t queue)
+void *queue_back(queue_t *this)
 {
-	return deque_back(queue.deque);
+	assert(this != NULL);
+	assert(!queue_empty(this));
+
+	return deque_back(this->deque);
 }
 
-bool queue_empty(queue_t queue)
+bool queue_empty(queue_t *this)
 {
-	return deque_empty(queue.deque);
+	assert(this != NULL);
+
+	return deque_empty(this->deque);
 }
 
-size_t queue_size(queue_t queue)
+size_t queue_size(queue_t *this)
 {
-	return deque_size(queue.deque);
+	assert(this != NULL);
+
+	return deque_size(this->deque);
 }
 
-void queue_clear(queue_t *pqueue)
+void queue_clear(queue_t *this)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
 
-	deque_clear(&pqueue->deque);
+	deque_clear(this->deque);
 }
 
-void queue_push(queue_t *pqueue, const void *data)
+void queue_push(queue_t *this, const void *data)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	deque_push_back(&pqueue->deque, data);
+	deque_push_back(this->deque, data);
 }
 
-void queue_pop(queue_t *pqueue)
+void queue_pop(queue_t *this)
 {
-	assert(pqueue != NULL);
+	assert(this != NULL);
+	assert(!queue_empty(this));
 
-	deque_pop_front(&pqueue->deque);
+	deque_pop_front(this->deque);
 }
 

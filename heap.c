@@ -4,8 +4,8 @@
  *
  *  Filename: heap.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-12
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 堆（容器适配器）
  *
  *****************************************************************/
@@ -16,108 +16,124 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void heap_adjust(heap_t *pheap, size_t root)
+heap_t *heap_init(size_t size, int (*compar)(const void *, const void *))
 {
-	assert(pheap != NULL);
+	assert(size > 0);
+	assert(compar != NULL);
 
-	void *root_data = malloc(pheap->vector.size);
+	heap_t *this = NULL;
+	if ((this = (heap_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->vector = vector_init(size);
+	this->compar = compar;
+	return this;
+}
+
+void heap_free(heap_t *this)
+{
+	if (this == NULL) {
+		return;
+	}
+
+	vector_free(this->vector);
+	free(this);
+}
+
+void *heap_top(heap_t *this)
+{
+	assert(this != NULL);
+
+	return vector_front(this->vector);
+}
+
+bool heap_empty(heap_t *this)
+{
+	assert(this != NULL);
+
+	return heap_size(this) == 0;
+}
+
+size_t heap_size(heap_t *this)
+{
+	assert(this != NULL);
+
+	return vector_size(this->vector);
+}
+
+void heap_clear(heap_t *this)
+{
+	assert(this != NULL);
+
+	vector_clear(this->vector);
+}
+
+static void heap_adjust(heap_t *this, size_t root)
+{
+	assert(this != NULL);
+
+	void *root_data = malloc(this->vector->size);
 	if (root_data == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
-	memcpy(root_data, vector_index(pheap->vector, root), pheap->vector.size);
+	memcpy(root_data, vector_index(this->vector, root), this->vector->size);
 
-	size_t count = vector_size(pheap->vector);
+	size_t count = vector_size(this->vector);
 	for (size_t index = ((root + 1) << 1) - 1; index < count;
 			root = index, index = ((index + 1) << 1) - 1) {
-		void *left_data = vector_index(pheap->vector, index);
+		void *left_data = vector_index(this->vector, index);
 		void *right_data = NULL;
 		if (index + 1 < count) {
-			right_data = vector_index(pheap->vector, index + 1);
+			right_data = vector_index(this->vector, index + 1);
 		}
 
 		void *index_data = left_data;
-		if (right_data != NULL && pheap->compar(left_data, right_data) < 0) {
+		if (right_data != NULL && this->compar(left_data, right_data) < 0) {
 			index_data = right_data;
 			index++;
 		}
 
-		if (pheap->compar(root_data, index_data) >= 0) {
+		if (this->compar(root_data, index_data) >= 0) {
 			break;
 		}
 
-		memcpy(vector_index(pheap->vector, root), index_data, pheap->vector.size);
+		memcpy(vector_index(this->vector, root), index_data, this->vector->size);
 	}
 	
-	memcpy(vector_index(pheap->vector, root), root_data, pheap->vector.size);
+	memcpy(vector_index(this->vector, root), root_data, this->vector->size);
 	free(root_data);
 }
 
-void heap_init(heap_t *pheap, size_t size, int (*compar)(const void *, const void *))
+void heap_push(heap_t *this, const void *data)
 {
-	assert(pheap != NULL);
-	assert(size > 0);
-
-	vector_init(&pheap->vector, size);
-	pheap->compar = compar;
-}
-
-void heap_free(heap_t *pheap)
-{
-	assert(pheap != NULL);
-
-	vector_free(&pheap->vector);
-}
-
-void *heap_top(heap_t heap)
-{
-	return vector_front(heap.vector);
-}
-
-bool heap_empty(heap_t heap)
-{
-	return vector_empty(heap.vector);
-}
-
-size_t heap_size(heap_t heap)
-{
-	return vector_size(heap.vector);
-}
-
-void heap_clear(heap_t *pheap)
-{
-	assert(pheap != NULL);
-
-	vector_clear(&pheap->vector);
-}
-
-void heap_push(heap_t *pheap, const void *data)
-{
-	assert(pheap != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	vector_push_back(&pheap->vector, data);
+	vector_push_back(this->vector, data);
 	
-	size_t count = vector_size(pheap->vector);
+	size_t count = vector_size(this->vector);
 	if (count <= 1) {
 		return;
 	}
 	
 	for (size_t root = (count >> 1) - 1; root >= 0; root = (root - 1) >> 1) {
-		heap_adjust(pheap, root);
+		heap_adjust(this, root);
 		if (root == 0) break;
 	}
 }
 
-void heap_pop(heap_t *pheap)
+void heap_pop(heap_t *this)
 {
-	assert(pheap != NULL);
+	assert(this != NULL);
+	assert(!heap_empty(this));
 
-	void *front_data = vector_front(pheap->vector);
-	void *back_data = vector_back(pheap->vector);
-	memcpy(front_data, back_data, pheap->vector.size);
-	vector_pop_back(&pheap->vector);
+	void *front_data = vector_front(this->vector);
+	void *back_data = vector_back(this->vector);
+	memcpy(front_data, back_data, this->vector->size);
+	vector_pop_back(this->vector);
 	
-	heap_adjust(pheap, 0);
+	heap_adjust(this, 0);
 }
 

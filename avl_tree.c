@@ -4,8 +4,8 @@
  *
  *  Filename: avl_tree.c
  *  Author: xiaozude
- *  Version: 5.0.0
- *  Date: 2021-06-14
+ *  Version: 5.2.0
+ *  Date: 2021-06-20
  *  Description: 平衡二叉树（容器）
  *
  *****************************************************************/
@@ -16,35 +16,34 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct avl_tree_node *avl_tree_node_init(size_t size, const void *data)
+static avl_tree_node_t *avl_tree_node_init(size_t size, const void *data)
 {
 	assert(size > 0);
 
-	struct avl_tree_node *p = NULL;
-	if ((p = (struct avl_tree_node *) calloc(1, sizeof(*p))) == NULL) {
-		perror("calloc");
+	avl_tree_node_t *p = NULL;
+	if ((p = (avl_tree_node_t *) malloc(sizeof(*p))) == NULL) {
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
-
 	p->height = 1;
-
-	vector_init(&p->vector, size);
-	vector_push_back(&p->vector, data);
-
+	p->vector = vector_init(size);
+	if (data != NULL) {
+		vector_push_back(p->vector, data);
+	}
 	return p;
 }
 
-static void avl_tree_node_free(struct avl_tree_node *p)
+static void avl_tree_node_free(avl_tree_node_t *p)
 {
 	if (p == NULL) {
 		return;
 	}
 
-	vector_free(&p->vector);
+	vector_free(p->vector);
 	free(p);
 }
 
-static size_t avl_tree_node_height(struct avl_tree_node *p)
+static size_t avl_tree_node_height(avl_tree_node_t *p)
 {
 	if (p == NULL) {
 		return 0;
@@ -53,7 +52,7 @@ static size_t avl_tree_node_height(struct avl_tree_node *p)
 	return p->height;
 }
 
-static void avl_tree_node_clear(struct avl_tree_node **p)
+static void avl_tree_node_clear(avl_tree_node_t **p)
 {
 	assert(p != NULL);
 
@@ -69,12 +68,13 @@ static void avl_tree_node_clear(struct avl_tree_node **p)
 	*p = NULL;
 }
 
-static struct avl_tree_node *avl_tree_node_find(
-		struct avl_tree_node *p, const void *data,
+static avl_tree_node_t *avl_tree_node_find(
+		avl_tree_node_t *p, const void *data,
 		int (*compar)(const void *, const void *),
-		struct avl_tree_node **parent)
+		avl_tree_node_t **parent)
 {
 	assert(data != NULL);
+	assert(compar != NULL);
 	
 	if (p == NULL) {
 		return NULL;
@@ -95,7 +95,7 @@ static struct avl_tree_node *avl_tree_node_find(
 	}
 }
 
-static struct avl_tree_node *avl_tree_node_min(struct avl_tree_node *p)
+static avl_tree_node_t *avl_tree_node_min(avl_tree_node_t *p)
 {
 	if (p == NULL || p->left == NULL) {
 		return p;
@@ -108,7 +108,7 @@ static struct avl_tree_node *avl_tree_node_min(struct avl_tree_node *p)
 	return p;
 }
 
-static struct avl_tree_node *avl_tree_node_max(struct avl_tree_node *p)
+static avl_tree_node_t *avl_tree_node_max(avl_tree_node_t *p)
 {
 	if (p == NULL || p->right == NULL) {
 		return p;
@@ -121,7 +121,7 @@ static struct avl_tree_node *avl_tree_node_max(struct avl_tree_node *p)
 	return p;
 }
 
-static void avl_tree_node_rotate_left(struct avl_tree_node **p)
+static void avl_tree_node_rotate_left(avl_tree_node_t **p)
 {
 	assert(p != NULL);
 
@@ -129,7 +129,7 @@ static void avl_tree_node_rotate_left(struct avl_tree_node **p)
 		return;
 	}
 
-	struct avl_tree_node *q = *p;
+	avl_tree_node_t *q = *p;
 	*p = q->right;
 	(*p)->parent = q->parent;
 	q->parent = *p;
@@ -145,7 +145,7 @@ static void avl_tree_node_rotate_left(struct avl_tree_node **p)
 	(*p)->height = (left_height > right_height ? left_height : right_height) + 1;
 }
 
-static void avl_tree_node_rotate_right(struct avl_tree_node **p)
+static void avl_tree_node_rotate_right(avl_tree_node_t **p)
 {
 	assert(p != NULL);
 
@@ -153,7 +153,7 @@ static void avl_tree_node_rotate_right(struct avl_tree_node **p)
 		return;
 	}
 
-	struct avl_tree_node *q = *p;
+	avl_tree_node_t *q = *p;
 	*p = q->left;
 	(*p)->parent = q->parent;
 	q->parent = *p;
@@ -169,7 +169,7 @@ static void avl_tree_node_rotate_right(struct avl_tree_node **p)
 	(*p)->height = (left_height > right_height ? left_height : right_height) + 1;
 }
 
-static void avl_tree_node_balance(struct avl_tree_node **p)
+static void avl_tree_node_balance(avl_tree_node_t **p)
 {
 	assert(p != NULL);
 
@@ -177,8 +177,8 @@ static void avl_tree_node_balance(struct avl_tree_node **p)
 		return;
 	}
 
-	struct avl_tree_node *left = (*p)->left;
-	struct avl_tree_node *right = (*p)->right;
+	avl_tree_node_t *left = (*p)->left;
+	avl_tree_node_t *right = (*p)->right;
 	
 	// 左子树不平衡
 	if (avl_tree_node_height(left) > avl_tree_node_height(right) + 1) {
@@ -208,12 +208,13 @@ static void avl_tree_node_balance(struct avl_tree_node **p)
 	(*p)->height = (left_height > right_height ? left_height : right_height) + 1;
 }
 
-static bool avl_tree_node_insert(struct avl_tree_node **root, bool unique, size_t size,
-		const void *data, int (*compar)(const void *, const void *))
+static bool avl_tree_node_insert(avl_tree_node_t **root, size_t size, const void *data,
+		int (*compar)(const void *, const void *), bool unique)
 {
 	assert(root != NULL);
-	assert(data != NULL);
 	assert(size > 0);
+	assert(data != NULL);
+	assert(compar != NULL);
 	
 	if (*root == NULL) {
 		return false;
@@ -228,8 +229,8 @@ static bool avl_tree_node_insert(struct avl_tree_node **root, bool unique, size_
 	}
 
 	// 树非空，寻找插入位置
-	struct avl_tree_node *parent = NULL;
-	struct avl_tree_node *node = avl_tree_node_find((*root)->left, data, compar, &parent);
+	avl_tree_node_t *parent = NULL;
+	avl_tree_node_t *node = avl_tree_node_find((*root)->left, data, compar, &parent);
 	if (parent == NULL) {
 		return false;
 	}
@@ -239,7 +240,7 @@ static bool avl_tree_node_insert(struct avl_tree_node **root, bool unique, size_
 		if (unique) {
 			return false;
 		}
-		vector_push_back(&node->vector, data);
+		vector_push_back(node->vector, data);
 		return true;
 	}
 
@@ -253,7 +254,7 @@ static bool avl_tree_node_insert(struct avl_tree_node **root, bool unique, size_
 	}
 
 	// 调整所有父节点的高度
-	for (struct avl_tree_node *p = parent; p != *root; p = p->parent) {
+	for (avl_tree_node_t *p = parent; p != *root; p = p->parent) {
 		if (p->parent->left == p) {
 			avl_tree_node_balance(&p->parent->left);
 		} else {
@@ -264,19 +265,20 @@ static bool avl_tree_node_insert(struct avl_tree_node **root, bool unique, size_
 	return true;
 }
 
-static bool avl_tree_node_erase(struct avl_tree_node **root, const void *data,
+static bool avl_tree_node_erase(avl_tree_node_t **root, const void *data,
 		int (*compar)(const void *, const void *))
 {
 	assert(root != NULL);
 	assert(data != NULL);
+	assert(compar != NULL);
 	
 	if (*root == NULL) {
 		return false;
 	}
 
 	// 寻找删除位置
-	struct avl_tree_node *node = avl_tree_node_find((*root)->left, data, compar, NULL);
-	struct avl_tree_node *parent = NULL;
+	avl_tree_node_t *node = avl_tree_node_find((*root)->left, data, compar, NULL);
+	avl_tree_node_t *parent = NULL;
 	if (node == NULL) {
 		return false;
 	}
@@ -286,7 +288,7 @@ static bool avl_tree_node_erase(struct avl_tree_node **root, const void *data,
 		// 寻找交换结点，交换数据
 		parent = node;
 		node = avl_tree_node_max(node->left);
-		vector_t x = node->vector;
+		vector_t *x = node->vector;
 		node->vector = parent->vector;
 		parent->vector = x;
 		
@@ -308,7 +310,7 @@ static bool avl_tree_node_erase(struct avl_tree_node **root, const void *data,
 		// 寻找交换结点，交换数据
 		parent = node;
 		node = avl_tree_node_min(node->right);
-		vector_t x = node->vector;
+		vector_t *x = node->vector;
 		node->vector = parent->vector;
 		parent->vector = x;
 
@@ -339,7 +341,7 @@ static bool avl_tree_node_erase(struct avl_tree_node **root, const void *data,
 	avl_tree_node_free(node);
 	
 	// 调整所有父节点的高度
-	for (struct avl_tree_node *p = parent; p != *root; p = p->parent) {
+	for (avl_tree_node_t *p = parent; p != *root; p = p->parent) {
 		if (p->parent->left == p) {
 			avl_tree_node_balance(&p->parent->left);
 		} else {
@@ -350,195 +352,263 @@ static bool avl_tree_node_erase(struct avl_tree_node **root, const void *data,
 	return true;
 }
 
-void avl_tree_init(avl_tree_t *ptree, size_t size, int (*compar)(const void *, const void *))
+avl_tree_t *avl_tree_init(size_t size, int (*compar)(const void *, const void *))
 {
-	assert(ptree != NULL);
+	assert(size > 0);
+	assert(compar != NULL);
 
-	ptree->size = size;
-	ptree->count = 0;
-	ptree->root = avl_tree_node_init(size, NULL);
-	ptree->root->parent = ptree->root;
-	ptree->compar = compar;
+	avl_tree_t *this = NULL;
+	if ((this = (avl_tree_t *) malloc(sizeof(*this))) == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	this->size = size;
+	this->count = 0;
+	this->root = avl_tree_node_init(size, NULL);
+	this->root->parent = this->root;
+	this->compar = compar;
+	return this;
 }
 
-void avl_tree_free(avl_tree_t *ptree)
+void avl_tree_free(avl_tree_t *this)
 {
-	assert(ptree != NULL);
+	if (this == NULL) {
+		return;
+	}
 
-	avl_tree_node_clear(&ptree->root->left);
-	avl_tree_node_free(ptree->root);
-
-	ptree->count = 0;
-	ptree->root = NULL;
+	avl_tree_node_clear(&this->root->left);
+	avl_tree_node_free(this->root);
+	free(this);
 }
 
-void *avl_tree_index(avl_tree_t tree, const void *data, size_t index)
+void *avl_tree_index(avl_tree_t *this, const void *data, size_t index)
 {
+	assert(this != NULL);
 	assert(data != NULL);
 
-	struct avl_tree_node *node = avl_tree_node_find(tree.root->left, data, tree.compar, NULL);
-	if (node == NULL) {
+	avl_tree_node_t *node = NULL;
+	if ((node = avl_tree_node_find(this->root->left, data, this->compar, NULL)) == NULL) {
 		return NULL;
 	}
-	return vector_index(node->vector, index) + index * tree.size;
+	return vector_index(node->vector, index);
 }
 
-size_t avl_tree_count(avl_tree_t tree, const void *data)
+size_t avl_tree_count(avl_tree_t *this, const void *data)
 {
+	assert(this != NULL);
 	assert(data != NULL);
 
-	struct avl_tree_node *node = avl_tree_node_find(tree.root->left, data, tree.compar, NULL);
-	if (node == NULL) {
+	avl_tree_node_t *node = NULL;
+	if ((node = avl_tree_node_find(this->root->left, data, this->compar, NULL)) == NULL) {
 		return 0;
 	}
 	return vector_size(node->vector);
 }
 
-bool avl_tree_empty(avl_tree_t tree)
+bool avl_tree_empty(avl_tree_t *this)
 {
-	return tree.count <= 0;
+	assert(this != NULL);
+
+	return this->count == 0;
 }
 
-size_t avl_tree_size(avl_tree_t tree)
+size_t avl_tree_size(avl_tree_t *this)
 {
-	return tree.count;
+	assert(this != NULL);
+
+	return this->count;
 }
 
-void avl_tree_clear(avl_tree_t *ptree)
+void avl_tree_clear(avl_tree_t *this)
 {
-	assert(ptree != NULL);
+	assert(this != NULL);
 
-	avl_tree_node_clear(&ptree->root->left);
+	avl_tree_node_clear(&this->root->left);
 
-	ptree->count = 0;
+	this->count = 0;
 }
 
-bool avl_tree_insert(avl_tree_t *ptree, bool unique, const void *data)
+bool avl_tree_insert(avl_tree_t *this, const void *data, bool unique)
 {
-	assert(ptree != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	if (avl_tree_node_insert(&ptree->root, unique, ptree->size, data, ptree->compar)) {
-		ptree->count++;
+	if (avl_tree_node_insert(&this->root, this->size, data, this->compar, unique)) {
+		this->count++;
 		return true;
 	}
 	return false;
 }
 
-bool avl_tree_erase(avl_tree_t *ptree, const void *data)
+bool avl_tree_erase(avl_tree_t *this, const void *data)
 {
-	assert(ptree != NULL);
+	assert(this != NULL);
 	assert(data != NULL);
 
-	if (avl_tree_node_erase(&ptree->root, data, ptree->compar)) {
-		ptree->count--;
+	if (avl_tree_node_erase(&this->root, data, this->compar)) {
+		this->count--;
 		return true;
 	}
 	return false;
 }
 
-static void *avl_tree_iterator_data(iterator_t it)
+avl_tree_iter_t avl_tree_begin(avl_tree_t *this)
 {
-	return vector_index(((struct avl_tree_node *) it.current)->vector, it.index);
+	assert(this != NULL);
+
+	return (avl_tree_iter_t) { this->size, avl_tree_node_min(this->root->left), 0, false };
 }
 
-static iterator_t avl_tree_iterator_prev(iterator_t it)
+avl_tree_iter_t avl_tree_end(avl_tree_t *this)
 {
-	struct avl_tree_node *current = (struct avl_tree_node *) it.current;
+	assert(this != NULL);
 
+	return (avl_tree_iter_t) { this->size, this->root, 0, false };
+}
+
+avl_tree_iter_t avl_tree_rbegin(avl_tree_t *this)
+{
+	assert(this != NULL);
+
+	return (avl_tree_iter_t) { this->size, avl_tree_node_max(this->root->left), 0, true };
+}
+
+avl_tree_iter_t avl_tree_rend(avl_tree_t *this)
+{
+	assert(this != NULL);
+
+	return (avl_tree_iter_t) { this->size, this->root, 0, true };
+}
+
+void *avl_tree_data(avl_tree_iter_t iter)
+{
+	return vector_index(iter.cursor->vector, iter.index);
+}
+
+bool avl_tree_equal(avl_tree_iter_t iter1, avl_tree_iter_t iter2)
+{
+	assert(iter1.size == iter2.size);
+	assert(iter1.reverse == iter2.reverse);
+
+	return avl_tree_distance(iter1, iter2) == 0;
+}
+
+ptrdiff_t avl_tree_distance(avl_tree_iter_t first, avl_tree_iter_t last)
+{
+	assert(first.size == last.size);
+	assert(first.reverse == last.reverse);
+
+	ptrdiff_t distance = 0;
+	if (!first.reverse) {
+		while (first.cursor != last.cursor) {
+			first = avl_tree_next(first);
+			distance++;
+		}
+	} else {
+		while (first.cursor != last.cursor) {
+			first = avl_tree_prev(first);
+			distance++;
+		}
+	}
+	return distance;
+}
+
+static avl_tree_iter_t avl_tree_node_prev(avl_tree_iter_t iter)
+{
 	// 当前结点为根节点
-	if (current->parent == current) {
-		it.current = avl_tree_node_max(current->left);
-		it.index = 0;
-		return it;
+	if (iter.cursor->parent == iter.cursor) {
+		iter.cursor = avl_tree_node_max(iter.cursor->left);
+		iter.index = 0;
+		return iter;
 	}
 
 	// 当前结点可继续索引
-	if (it.index < vector_size(current->vector) - 1) {
-		it.index++;
-		return it;
+	if (iter.index < vector_size(iter.cursor->vector) - 1) {
+		iter.index++;
+		return iter;
 	}
 	
 	// 当前结点有左子树
-	if (current->left != NULL) {
-		it.current = avl_tree_node_max(current->left);
-		it.index = 0;
-		return it;
+	if (iter.cursor->left != NULL) {
+		iter.cursor = avl_tree_node_max(iter.cursor->left);
+		iter.index = 0;
+		return iter;
 	}
 
 	// 当前结点无左子树
-	while (current->parent->left == current) {
-		current = current->parent;
+	while (iter.cursor->parent->left == iter.cursor) {
+		iter.cursor = iter.cursor->parent;
 	}
-	it.current = current->parent;
-	it.index = 0;
-	return it;
+	iter.cursor = iter.cursor->parent;
+	iter.index = 0;
+	return iter;
 }
 
-static iterator_t avl_tree_iterator_next(iterator_t it)
+static avl_tree_iter_t avl_tree_node_next(avl_tree_iter_t iter)
 {
-	struct avl_tree_node *current = (struct avl_tree_node *) it.current;
-
 	// 当前结点为根节点
-	if (current->parent == current) {
-		it.current = avl_tree_node_min(current->left);
-		it.index = 0;
-		return it;
+	if (iter.cursor->parent == iter.cursor) {
+		iter.cursor = avl_tree_node_min(iter.cursor->left);
+		iter.index = 0;
+		return iter;
 	}
 
 	// 当前结点可索引
-	if (it.index < vector_size(current->vector) - 1) {
-		it.index++;
-		return it;
+	if (iter.index < vector_size(iter.cursor->vector) - 1) {
+		iter.index++;
+		return iter;
 	}
 	
 	// 当前结点有右子树
-	if (current->right != NULL) {
-		it.current = avl_tree_node_min(current->right);
-		it.index = 0;
-		return it;
+	if (iter.cursor->right != NULL) {
+		iter.cursor = avl_tree_node_min(iter.cursor->right);
+		iter.index = 0;
+		return iter;
 	}
 
 	// 当前结点无右子树
-	while (current->parent->right == current) {
-		current = current->parent;
+	while (iter.cursor->parent->right == iter.cursor) {
+		iter.cursor = iter.cursor->parent;
 	}
-	it.current = current->parent;
-	it.index = 0;
-	return it;
+	iter.cursor = iter.cursor->parent;
+	iter.index = 0;
+	return iter;
 }
 
-static iterator_t avl_tree_iterator(avl_tree_t tree, bool reverse, void *current)
+avl_tree_iter_t avl_tree_prev(avl_tree_iter_t iter)
 {
-	iterator_t it;
-	it.size = tree.size;
-	it.index = 0;
-	it.current = current;
-	it.reverse = reverse;
-	it.category = bidirectional_iterator_tag;
-	it.data = avl_tree_iterator_data;
-	it.prev = avl_tree_iterator_prev;
-	it.next = avl_tree_iterator_next;
-	return it;
+	if (!iter.reverse) {
+		return avl_tree_node_prev(iter);
+	} else {
+		return avl_tree_node_next(iter);
+	}
 }
 
-iterator_t avl_tree_begin(avl_tree_t tree)
+avl_tree_iter_t avl_tree_next(avl_tree_iter_t iter)
 {
-	return avl_tree_iterator(tree, false, avl_tree_node_min(tree.root->left));
+	if (!iter.reverse) {
+		return avl_tree_node_next(iter);
+	} else {
+		return avl_tree_node_prev(iter);
+	}
 }
 
-iterator_t avl_tree_end(avl_tree_t tree)
+avl_tree_iter_t avl_tree_advance(avl_tree_iter_t iter, ptrdiff_t distance)
 {
-	return avl_tree_iterator(tree, false, tree.root);
-}
+	if (iter.reverse) {
+		distance = -distance;
+	}
 
-iterator_t avl_tree_rbegin(avl_tree_t tree)
-{
-	return avl_tree_iterator(tree, true, avl_tree_node_max(tree.root->left));
-}
+	while (distance < 0) {
+		iter = avl_tree_node_prev(iter);
+		distance++;
+	}
 
-iterator_t avl_tree_rend(avl_tree_t tree)
-{
-	return avl_tree_iterator(tree, true, tree.root);
+	while (distance > 0) {
+		iter = avl_tree_node_next(iter);
+		distance--;
+	}
+
+	return iter;
 }
 
